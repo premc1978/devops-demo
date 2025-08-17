@@ -1,0 +1,64 @@
+name: 'Terraform - Sandbox'
+
+on:
+  push:
+    branches: [ "sandbox" ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    environment: sandbox
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Set up the Azure credentials for authentication
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: '${{ secrets.AZURE_CREDENTIALS }}'
+
+    # Install the latest version of Terraform CLI
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.12.2
+
+    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Terraform Init
+      id: init
+      run: terraform init
+      working-directory: ./tf/environments/sandbox
+
+    # Checks that all Terraform configuration files adhere to a canonical format
+    - name: Terraform Format
+      run: terraform fmt -check
+      working-directory: ./tf/environments/sandbox
+
+    # Validates the Terraform configuration files in the working directory
+    - name: Terraform Validate
+      id: validate
+      working-directory: ./tf/environments/sandbox
+      run: terraform validate -no-color
+
+    # Generates an execution plan for Terraform
+    - name: Terraform Plan
+      run: terraform plan -input=false
+      working-directory: ./tf/environments/sandbox
+
+    # Applies the changes required to reach the desired state of the configuration
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -input=false
+      working-directory: ./tf/environments/sandbox
