@@ -10,7 +10,47 @@ permissions:
   contents: read
 
 jobs:
-  # ...copy and adapt secrets-scan, checkov, tfsec jobs as in sandbox...
+  # Scan repository for secrets using Gitleaks
+  secrets-scan:
+    name: 'Secrets Scan'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Gitleaks # Detect hardcoded secrets in all files, including Terraform
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: "--source=. --verbose"
+
+  # Run Checkov for static code analysis of Terraform files
+  checkov:
+    name: 'Checkov Scan'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Checkov # Static analysis for Terraform security and compliance
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ./tf/environments/sandbox
+
+  # Run TFSec for static analysis of Terraform files
+  tfsec:
+    name: 'TFSec Scan'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run TFSec # Security scanner for Terraform code
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: ./tf/environments/sandbox
 
   terraform:
     name: 'Terraform'

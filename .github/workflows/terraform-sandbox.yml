@@ -129,22 +129,24 @@ jobs:
         uses: thollander/actions-comment-pull-request@v2
         with:
           message: "Automated review: All checks have passed and this PR is ready for further review or merge."
-  # Automate PR review and approval (for demonstration, auto-approve and comment)
-  pr-review:
-    name: 'Automate PR Review'
+
+  # Run Terratest for integration tests
+  terratest:
+    name: 'Terratest'
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    needs: terraform
+    environment: sandbox
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Approve Pull Request
-        uses: hmarr/auto-approve-action@v3
+      - name: Set up Go # Install Go for running Terratest
+        uses: actions/setup-go@v5
         with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Add PR Review Comment
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          message: "Automated review: All checks have passed and this PR is ready for further review or merge."
+          go-version: '1.21'
+      - name: Install dependencies # Install Go dependencies for tests
+        run: go mod tidy
+        working-directory: ./test
+      - name: Run Terratest # Run Terratest integration tests
+        run: go test -v ./...
+        working-directory: ./test
