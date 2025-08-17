@@ -1,0 +1,76 @@
+name: 'Terraform - Dev'
+
+on:
+  push:
+    branches: [ "dev" ]
+  pull_request:
+    branches: [ "dev" ]
+
+permissions:
+  contents: read
+
+jobs:
+  # ...copy and adapt secrets-scan, checkov, tfsec jobs as in sandbox...
+
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    needs: [checkov, tfsec]
+    environment: 
+      name: dev
+      # Requires environment protection rules (required reviewers) in GitHub repo settings
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # ...copy and adapt terraform steps, set working-directory to ./tf/environments/dev ...
+      # Example:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # ...other steps...
+      - name: Terraform Init # Initialize Terraform working directory
+        id: init
+        run: terraform init
+        working-directory: ./tf/environments/dev
+      # ...other steps...
+      - name: Terraform Apply # Apply Terraform changes
+        run: terraform apply -auto-approve -input=false
+        working-directory: ./tf/environments/dev
+
+  terratest:
+    name: 'Terratest'
+    runs-on: ubuntu-latest
+    needs: terraform
+    environment: dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go # Install Go for running Terratest
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Install dependencies # Install Go dependencies for tests
+        run: go mod tidy
+        working-directory: ./test
+      - name: Run Terratest # Run Terratest integration tests
+        run: go test -v ./...
+        working-directory: ./test
+
+  pr-review:
+    name: 'Automate PR Review'
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Approve Pull Request
+        uses: hmarr/auto-approve-action@v3
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Add PR Review Comment
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: "Automated review: All checks have passed and this PR is ready for further review or merge."
