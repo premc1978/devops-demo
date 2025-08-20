@@ -3,7 +3,7 @@ name: 'Terraform - Prod'
 on:
   pull_request:
     branches: [ "main" ]
-    # Only allow PRs where the source branch is 'dev'
+    # Only allow PRs where the source branch is 'prod'
     types: [opened, synchronize, reopened]
     paths-ignore: []
     # GitHub Actions does not natively filter PR source branches, so add a job-level condition below
@@ -39,7 +39,7 @@ jobs:
       - name: Run Checkov # Static analysis for Terraform security and compliance
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: ./tf/environments/dev
+          directory: ./tf/environments/prod
 
   # Run TFSec for static analysis of Terraform files
   tfsec:
@@ -53,25 +53,27 @@ jobs:
       - name: Run TFSec # Security scanner for Terraform code
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
-          working_directory: ./tf/environments/dev
+          working_directory: ./tf/environments/prod
 
   terratest:
     name: 'Terratest'
     runs-on: ubuntu-latest
-    needs: terraform
-    environment: dev
-
+    needs: [checkov, tfsec]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Go # Install Go for running Terratest
+      - name: Login to Azure # Authenticate to Azure for Terratest
+        uses: azure/login@v1
+        with:
+          creds: '${{ secrets.AZURE_CREDENTIALS }}'
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Install dependencies # Install Go dependencies for tests
+      - name: Install dependencies
         run: go mod tidy
         working-directory: ./test
-      - name: Run Terratest # Run Terratest integration tests
+      - name: Run Terratest
         run: go test -v ./...
         working-directory: ./test
 
@@ -80,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [checkov, tfsec, secrets-scan]
     environment: 
-      name: dev
+      name: prod
       # Requires environment protection rules (required reviewers) in GitHub repo settings
 
     defaults:
@@ -99,18 +101,18 @@ jobs:
       - name: Terraform Init # Initialize Terraform working directory
         id: init
         run: terraform init
-        working-directory: ./tf/environments/dev
+        working-directory: ./tf/environments/prod
       - name: Terraform Validate # Validate Terraform configuration
         run: terraform validate -no-color
-        working-directory: ./tf/environments/dev
+        working-directory: ./tf/environments/prod
       - name: Terraform Plan # Generate Terraform execution plan
         run: terraform plan -input=false
-        working-directory: ./tf/environments/dev
+        working-directory: ./tf/environments/prod
       # Only apply on PRs (after all checks/tests)
       - name: Terraform Apply # Apply Terraform changes
         if: github.event_name == 'pull_request'
         run: terraform apply -auto-approve -input=false
-        working-directory: ./tf/environments/dev
+        working-directory: ./tf/environments/prod
 
   pr-review:
     name: 'Automate PR Review'

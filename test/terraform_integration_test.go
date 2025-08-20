@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTerraformSandbox(t *testing.T) {
+func TestTerraformqa(t *testing.T) {
 	t.Parallel()
 
 	// Use environment variable or default path for Terraform code
 	tfDir := os.Getenv("TF_TEST_DIR")
 	if tfDir == "" {
-		tfDir = filepath.Join("..", "tf", "environments", "sandbox")
+		tfDir = filepath.Join("..", "tf", "environments", "qa")
 	}
 
 	terraformOptions := &terraform.Options{
