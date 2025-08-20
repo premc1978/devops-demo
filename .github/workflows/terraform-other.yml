@@ -2,9 +2,9 @@ name: 'Terraform - Other Branches'
 
 on:
   push:
-    branches-ignore: [ "main", "dev", "qa", "sandbox" ]
+    branches-ignore: [ "main", "dev", "qa" ]
   pull_request:
-    branches-ignore: [ "main", "dev", "qa", "sandbox" ]
+    branches-ignore: [ "main", "dev", "qa" ]
 
 permissions:
   contents: read
