@@ -1,0 +1,23 @@
+# CODEOWNERS file — assign appropriate GitHub usernames or org teams for each path.
+# Replace placeholders (e.g., @your-org/platform-team) with real users/teams.
+
+# Owners for production environment — strict review required
+/tf/environments/prod/    @your-org/senior-engineers @your-org/security-team
+
+# Owners for dev and qa environments
+/tf/environments/dev/     @your-org/platform-team
+/tf/environments/qa/      @your-org/qa-team
+
+# Module changes should notify platform/infrastructure team
+/tf/modules/              @your-org/platform-team
+
+# Workflows: CI/CD and promotion pipelines
+/.github/workflows/terraform-prod.yml    @your-org/platform-team @your-org/release-manager
+/.github/workflows/terraform-dev.yml     @your-org/platform-team
+/.github/workflows/terraform-qa.yml      @your-org/qa-team
+
+# Tests and automation
+/test/                    @your-org/platform-team
+
+# Default owners for everything else (fallback)
+*                         @your-org/repo-maintainers
