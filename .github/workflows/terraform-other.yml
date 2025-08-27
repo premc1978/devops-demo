@@ -50,6 +50,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Login to Azure # Authenticate to Azure for Terratest
+        uses: azure/login@v1
+        with:
+          creds: '${{ secrets.AZURE_CREDENTIALS }}'
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -58,5 +62,8 @@ jobs:
         run: go mod tidy
         working-directory: ./test
       - name: Run Terratest
+        env:
+          TF_TEST_DIR: ./tf/environments/sandbox
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         run: go test -v ./...
         working-directory: ./test

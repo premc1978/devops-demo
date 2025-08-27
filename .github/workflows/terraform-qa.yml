@@ -8,6 +8,11 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  TF_ENV: qa
+  TF_TEST_DIR: ./tf/environments/qa
+  TF_VAR_FILE: ./tf/environments/qa/terraform.tfvars
+
 jobs:
   # Scan repository for secrets using Gitleaks
   secrets-scan:
@@ -55,6 +60,11 @@ jobs:
     name: 'Terraform'
     runs-on: ubuntu-latest
     needs: [checkov, tfsec]
+    # Bind this job to the GitHub Environment "qa" so environment protection rules apply
+    environment:
+      name: qa
+    # Export environment-specific variables for Terraform and Terratest
+
     defaults:
       run:
         shell: bash
@@ -73,14 +83,14 @@ jobs:
         with:
           terraform_version: 1.12.2
       - name: Terraform Init # Initialize Terraform working directory
-        run: terraform init
-        working-directory: ./tf/environments/qa
+        run: terraform init -var-file="${{ env.TF_VAR_FILE }}"
+        working-directory: ${{ env.TF_TEST_DIR }}
       - name: Terraform Validate # Validate Terraform configuration
-        run: terraform validate -no-color
-        working-directory: ./tf/environments/qa
+        run: terraform validate -no-color -var-file="${{ env.TF_VAR_FILE }}"
+        working-directory: ${{ env.TF_TEST_DIR }}
       - name: Terraform Plan # Generate and show an execution plan
-        run: terraform plan -input=false
-        working-directory: ./tf/environments/qa
+        run: terraform plan -input=false -var-file="${{ env.TF_VAR_FILE }}"
+        working-directory: ${{ env.TF_TEST_DIR }}
 
   terratest:
     name: 'Terratest'
@@ -90,14 +100,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Go # Install Go for running Terratest
+      - name: Login to Azure # Authenticate to Azure for Terratest
+        uses: azure/login@v1
+        with:
+          creds: '${{ secrets.AZURE_CREDENTIALS }}'
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Install dependencies # Install Go dependencies for tests
+      - name: Install dependencies
         run: go mod tidy
         working-directory: ./test
-      - name: Run Terratest # Run Terratest integration tests
+      - name: Run Terratest
+        env:
+          TF_TEST_DIR: ./tf/environments/qa
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         run: go test -v ./...
         working-directory: ./test
 
