@@ -56,10 +56,37 @@ jobs:
         with:
           working_directory: ./tf/environments/qa
 
+  sonarqube:
+    name: 'SonarQube Scan'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+      - name: Run SonarScanner (Docker)
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        run: |
+          docker run --rm \
+            -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+            -e SONAR_LOGIN="$SONAR_TOKEN" \
+            -v "${{ github.workspace }}:/usr/src" \
+            sonarsource/sonar-scanner-cli \
+            -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+            -Dsonar.sources=. \
+            -Dsonar.host.url="$SONAR_HOST_URL" \
+            -Dsonar.login="$SONAR_TOKEN"
+
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    needs: [checkov, tfsec]
+    needs: [sonarqube, checkov, tfsec]
     # Bind this job to the GitHub Environment "qa" so environment protection rules apply
     environment:
       name: qa
@@ -113,7 +140,7 @@ jobs:
         working-directory: ./test
       - name: Run Terratest
         env:
-          TF_TEST_DIR: ./tf/environments/qa
+          TF_TEST_DIR: ${{ env.TF_TEST_DIR }}
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         run: go test -v ./...
         working-directory: ./test
